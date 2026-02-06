@@ -6,6 +6,7 @@ const SPREADSHEET_ID = '1_caJxWmBVuuNCfeIBBmMhqnfUctdK1VOv80wodCu_sg';
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('主恩改革宗長老會 財務報表')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
