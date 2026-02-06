@@ -266,12 +266,12 @@
           .getIncomeStatement(org, period);
       } else {
         showLoading(true);
-        // 資產負債表期間格式不同，需要轉換
-        const bsPeriod = period ? period.replace('年', '年').replace('月', '月31日') : '';
+        // 資產負債表不傳期間篩選，讓後端用組織篩選即可
+        // （因為期間格式不同，直接傳 null 顯示該組織所有資料）
         google.script.run
           .withSuccessHandler(renderBalance)
           .withFailureHandler(e => { showLoading(false); alert('錯誤: ' + e.message); })
-          .getBalanceSheet(org, bsPeriod || null);
+          .getBalanceSheet(org, null);
       }
     }
     
