@@ -1,1 +1,16 @@
+# 排除敏感檔案
 .script_token.json
+
+# 記憶和個人資訊不推到公開倉庫
+memory/
+MEMORY.md
+TOOLS.md
+USER.md
+IDENTITY.md
+AGENTS.md
+SOUL.md
+BOOTSTRAP.md
+HEARTBEAT.md
+
+# 打包檔
+*.skill
