@@ -21,9 +21,22 @@ function cellToString(val) {
   return String(val);
 }
 
+// 讀取設定工作表
+function getSettings() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('設定');
+  if (!sheet) return { elderMode: false };
+  
+  var val = String(sheet.getRange('A2').getValue()).trim().toLowerCase();
+  var elderMode = (val === '是' || val === 'true' || val === 'yes' || val === '1');
+  
+  return { elderMode: elderMode };
+}
+
 // 取得可用的組織和期間
 function getFilterOptions() {
   var ss = getSpreadsheet();
+  var settings = getSettings();
   
   var incomeSheet = ss.getSheetByName('收支餘絀表');
   var incomeData = incomeSheet.getDataRange().getValues().slice(1);
@@ -48,13 +61,15 @@ function getFilterOptions() {
   return {
     organizations: Object.keys(orgSet),
     incomePeriods: Object.keys(periodSet),
-    balancePeriods: Object.keys(bsPeriodSet)
+    balancePeriods: Object.keys(bsPeriodSet),
+    elderMode: settings.elderMode
   };
 }
 
 // 取得收支餘絀表資料
 function getIncomeStatement(org, period) {
   var ss = getSpreadsheet();
+  var settings = getSettings();
   var sheet = ss.getSheetByName('收支餘絀表');
   var data = sheet.getDataRange().getValues();
   var rows = data.slice(1);
@@ -64,6 +79,10 @@ function getIncomeStatement(org, period) {
   var totalIncome = 0;
   var totalExpense = 0;
   var netIncome = 0;
+  
+  // 長執會模式：暫存人事費用以便彙總
+  var personnelMonth = 0;
+  var personnelYear = 0;
   
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
@@ -87,7 +106,13 @@ function getIncomeStatement(org, period) {
     if (category === '收入') {
       income.push(item);
     } else if (category === '支出') {
-      expense.push(item);
+      // 長執會模式：人事費用只彙總，不顯示細項
+      if (settings.elderMode && item.mainAccount === '人事費用') {
+        personnelMonth += item.monthAmount;
+        personnelYear += item.yearAmount;
+      } else {
+        expense.push(item);
+      }
     } else if (category === '收入小計') {
       totalIncome = item.monthAmount;
     } else if (category === '支出小計') {
@@ -95,6 +120,19 @@ function getIncomeStatement(org, period) {
     } else if (category === '本期損益') {
       netIncome = item.monthAmount;
     }
+  }
+  
+  // 長執會模式：加入人事費用彙總項目（放在支出最前面）
+  if (settings.elderMode && personnelMonth > 0) {
+    expense.unshift({
+      org: org || '',
+      period: period || '',
+      category: '支出',
+      mainAccount: '人事費用',
+      subAccount: '人事費用',
+      monthAmount: personnelMonth,
+      yearAmount: personnelYear
+    });
   }
   
   if (!totalIncome) {
@@ -111,6 +149,7 @@ function getIncomeStatement(org, period) {
     totalIncome: totalIncome,
     totalExpense: totalExpense,
     netIncome: netIncome,
+    elderMode: settings.elderMode,
     org: org || '全部',
     period: period || '全部'
   };
