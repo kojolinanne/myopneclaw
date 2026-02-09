@@ -155,6 +155,54 @@ function getIncomeStatement(org, period) {
   };
 }
 
+// 取得預算資料
+function getBudgetData(org) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('預算資料');
+  if (!sheet) return { items: [], detailMap: {} };
+  
+  var data = sheet.getDataRange().getValues();
+  var rows = data.slice(1); // 跳過 header
+  
+  var items = [];
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var rowOrg = String(row[0]).trim();
+    if (org && rowOrg !== org) continue;
+    
+    items.push({
+      org: rowOrg,
+      category: String(row[1]).trim(),
+      mainAccount: String(row[2]).trim(),
+      subAccount: String(row[3]).trim(),
+      budget: Number(row[4]) || 0,
+      detailTag: String(row[5]).trim()
+    });
+  }
+  
+  // 讀取詳細帳明細
+  var detailSheet = ss.getSheetByName('預算明細');
+  var detailMap = {};
+  if (detailSheet) {
+    var detailData = detailSheet.getDataRange().getValues();
+    var detailRows = detailData.slice(1);
+    for (var j = 0; j < detailRows.length; j++) {
+      var dr = detailRows[j];
+      var detailOrg = String(dr[3]).trim();
+      if (org && detailOrg !== org) continue;
+      
+      var parentKey = String(dr[0]).trim();
+      if (!detailMap[parentKey]) detailMap[parentKey] = [];
+      detailMap[parentKey].push({
+        subItem: String(dr[1]).trim(),
+        budget: Number(dr[2]) || 0
+      });
+    }
+  }
+  
+  return { items: items, detailMap: detailMap };
+}
+
 // 取得資產負債表資料
 function getBalanceSheet(org, period) {
   var ss = getSpreadsheet();
