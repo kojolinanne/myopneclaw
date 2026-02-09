@@ -328,14 +328,22 @@
       document.getElementById('detailModal').classList.remove('show');
     }
     
-    function showDetailModal(tag, budgetData, actualYearMap) {
+    function showDetailModal(tag, budgetData, incomeData) {
       var details = budgetData.detailMap[tag] || [];
+      var actuals = budgetData.actualDetailMap[tag] || [];
       document.getElementById('modalTitle').textContent = tag + ' — 詳細帳';
+      
+      // 建立實際支出 map: subItem → yearAmount
+      var actualMap = {};
+      actuals.forEach(function(a) {
+        if (!actualMap[a.subItem]) actualMap[a.subItem] = 0;
+        actualMap[a.subItem] += a.yearAmount;
+      });
       
       var totalBudget = 0, totalActual = 0;
       var tbody = '';
       details.forEach(function(d) {
-        var actual = actualYearMap[tag + '::' + d.subItem] || 0;
+        var actual = actualMap[d.subItem] || 0;
         var remaining = d.budget - actual;
         totalBudget += d.budget;
         totalActual += actual;
@@ -416,20 +424,22 @@
         return;
       }
       
-      // 建立預算查詢 map: key = mainAccount or subAccount
-      var budgetMap = {};
+      // 建立預算查詢 map
+      // subBudgetMap: 科目細項 → 預算
+      // mainBudgetMap: 科目大類 → 預算（人事費用等只有大類預算的）
+      var subBudgetMap = {};
+      var mainBudgetMap = {};
       var detailTagMap = {};
       if (budget && budget.items) {
         budget.items.forEach(function(b) {
-          var key = b.subAccount ? b.subAccount : b.mainAccount;
-          budgetMap[key] = b.budget;
-          if (b.detailTag) detailTagMap[key] = b.detailTag;
+          if (b.subAccount) {
+            subBudgetMap[b.subAccount] = b.budget;
+            if (b.detailTag) detailTagMap[b.subAccount] = b.detailTag;
+          } else {
+            mainBudgetMap[b.mainAccount] = b.budget;
+          }
         });
       }
-      
-      // 建立「實際支出 by 年結額」map（給 modal 用，暫時用 yearAmount）
-      // 這裡目前沒有詳細帳的 actual 數據，先留空由 modal 顯示 0
-      var actualYearMap = {};
       
       // Group by mainAccount
       function groupBy(arr) {
@@ -490,8 +500,7 @@
       for (const [group, items] of Object.entries(incomeGroups)) {
         html += `<tr class="sub-section"><td colspan="5">${group}</td></tr>`;
         items.forEach(i => {
-          var bKey = i.subAccount;
-          var bgt = budgetMap[bKey];
+          var bgt = subBudgetMap[i.subAccount];
           var remaining = (bgt != null) ? bgt - i.yearAmount : null;
           var remClass = remaining != null ? (remaining > 0 ? 'remaining-positive' : (remaining < 0 ? 'remaining-negative' : 'remaining-zero')) : '';
           html += `<tr class="positive"><td style="padding-left:48px">${i.subAccount}</td>
@@ -510,17 +519,45 @@
       // 支出
       html += `<tr class="section-header"><td colspan="5">📉 支出</td></tr>`;
       for (const [group, items] of Object.entries(expenseGroups)) {
-        const gt = items.reduce((s, i) => s + i.monthAmount, 0);
-        html += `<tr class="sub-section"><td colspan="4">${group}</td><td class="amount" style="font-size:12px;color:#718096">小計 ${fmt(gt)}</td></tr>`;
+        var gtMonth = items.reduce((s, i) => s + i.monthAmount, 0);
+        var gtYear = items.reduce((s, i) => s + i.yearAmount, 0);
+        // 科目大類預算（人事費用等只有大類預算）
+        var groupBgt = mainBudgetMap[group];
+        // 如果沒有大類預算，加總子項預算
+        if (groupBgt == null) {
+          var hasAny = false;
+          var sum = 0;
+          items.forEach(i => {
+            var b = subBudgetMap[i.subAccount];
+            if (b != null) { sum += b; hasAny = true; }
+          });
+          if (hasAny) groupBgt = sum;
+        }
+        var groupRem = (groupBgt != null) ? groupBgt - gtYear : null;
+        var groupRemClass = groupRem != null ? (groupRem > 0 ? 'remaining-positive' : (groupRem < 0 ? 'remaining-negative' : 'remaining-zero')) : '';
+        html += `<tr class="sub-section"><td>${group}</td><td class="amount" style="font-size:12px;color:#718096">小計 ${fmt(gtMonth)}</td>
+          <td class="amount" style="font-size:12px;color:#718096">${fmt(gtYear)}</td>
+          <td class="amount budget-col" style="font-size:12px">${groupBgt != null ? fmt(groupBgt) : '-'}</td>
+          <td class="amount ${groupRemClass}" style="font-size:12px">${groupRem != null ? fmt(groupRem) : '-'}</td></tr>`;
+        
+        // 個別子項
+        var hasMainBudgetOnly = mainBudgetMap[group] != null;
         items.forEach(i => {
-          var bKey = i.subAccount;
-          var bgt = budgetMap[bKey];
-          var tag = detailTagMap[bKey];
-          var remaining = (bgt != null) ? bgt - i.yearAmount : null;
-          var remClass = remaining != null ? (remaining > 0 ? 'remaining-positive' : (remaining < 0 ? 'remaining-negative' : 'remaining-zero')) : '';
+          var bgt = subBudgetMap[i.subAccount];
+          var tag = detailTagMap[i.subAccount];
+          var remaining, remClass;
+          if (hasMainBudgetOnly) {
+            // 人事費用等：子項不單獨顯示預算
+            bgt = null;
+            remaining = null;
+            remClass = '';
+          } else {
+            remaining = (bgt != null) ? bgt - i.yearAmount : null;
+            remClass = remaining != null ? (remaining > 0 ? 'remaining-positive' : (remaining < 0 ? 'remaining-negative' : 'remaining-zero')) : '';
+          }
           var nameHtml = i.subAccount;
           if (tag) {
-            nameHtml += ' <button class="detail-btn" onclick="showDetailModal(\'' + tag.replace(/'/g, "\\'") + '\', budgetCache, {})">📋 明細</button>';
+            nameHtml += ' <button class="detail-btn" onclick="showDetailModal(\'' + tag.replace(/'/g, "\\'") + '\', budgetCache)">📋 明細</button>';
           }
           html += `<tr class="negative"><td style="padding-left:48px">${nameHtml}</td>
             <td class="amount">${fmt(i.monthAmount)}</td><td class="amount">${fmt(i.yearAmount)}</td>

@@ -159,7 +159,7 @@ function getIncomeStatement(org, period) {
 function getBudgetData(org) {
   var ss = getSpreadsheet();
   var sheet = ss.getSheetByName('預算資料');
-  if (!sheet) return { items: [], detailMap: {} };
+  if (!sheet) return { items: [], detailMap: {}, actualDetailMap: {} };
   
   var data = sheet.getDataRange().getValues();
   var rows = data.slice(1); // 跳過 header
@@ -180,7 +180,7 @@ function getBudgetData(org) {
     });
   }
   
-  // 讀取詳細帳明細
+  // 讀取預算明細
   var detailSheet = ss.getSheetByName('預算明細');
   var detailMap = {};
   if (detailSheet) {
@@ -200,7 +200,30 @@ function getBudgetData(org) {
     }
   }
   
-  return { items: items, detailMap: detailMap };
+  // 讀取收支明細（實際支出子項）
+  var actualDetailSheet = ss.getSheetByName('收支明細');
+  var actualDetailMap = {};
+  if (actualDetailSheet) {
+    var adData = actualDetailSheet.getDataRange().getValues();
+    var adRows = adData.slice(1);
+    for (var k = 0; k < adRows.length; k++) {
+      var ar = adRows[k];
+      var adOrg = String(ar[0]).trim();
+      if (org && adOrg !== org) continue;
+      
+      var adParent = String(ar[2]).trim();
+      var adPeriod = String(ar[1]).trim();
+      if (!actualDetailMap[adParent]) actualDetailMap[adParent] = [];
+      actualDetailMap[adParent].push({
+        period: adPeriod,
+        subItem: String(ar[3]).trim(),
+        monthAmount: Number(ar[4]) || 0,
+        yearAmount: Number(ar[5]) || 0
+      });
+    }
+  }
+  
+  return { items: items, detailMap: detailMap, actualDetailMap: actualDetailMap };
 }
 
 // 取得資產負債表資料
