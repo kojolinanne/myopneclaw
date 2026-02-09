@@ -557,11 +557,11 @@
           var bgt = subBudgetMap[i.subAccount];
           var tag = detailTagMap[i.subAccount];
           var remaining, remClass;
-          if (hasMainBudgetOnly) {
-            // 人事費用等：子項不單獨顯示預算
-            bgt = null;
-            remaining = null;
-            remClass = '';
+          if (hasMainBudgetOnly && bgt == null) {
+            // 大類預算（如人事費用）：子項用大類預算顯示
+            bgt = mainBudgetMap[group];
+            remaining = (bgt != null) ? bgt - i.yearAmount : null;
+            remClass = remaining != null ? (remaining > 0 ? 'remaining-positive' : (remaining < 0 ? 'remaining-negative' : 'remaining-zero')) : '';
           } else {
             remaining = (bgt != null) ? bgt - i.yearAmount : null;
             remClass = remaining != null ? (remaining > 0 ? 'remaining-positive' : (remaining < 0 ? 'remaining-negative' : 'remaining-zero')) : '';

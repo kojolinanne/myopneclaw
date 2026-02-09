@@ -176,7 +176,7 @@ function getBudgetData(org) {
       mainAccount: String(row[2]).trim(),
       subAccount: String(row[3]).trim(),
       budget: Number(row[4]) || 0,
-      detailTag: String(row[5]).trim()
+      detailTag: row[5] != null ? String(row[5]).trim() : ''
     });
   }
   
