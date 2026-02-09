@@ -130,6 +130,12 @@
     tr.positive td.amount { color: #276749; }
     tr.negative td.amount { color: #c53030; }
     
+    /* 預算欄位顏色覆蓋（優先於 row class） */
+    td.amount.budget-col { color: #6b7280 !important; }
+    td.amount.remaining-positive { color: #276749 !important; font-weight: 500; }
+    td.amount.remaining-negative { color: #c53030 !important; font-weight: 600; }
+    td.amount.remaining-zero { color: #6b7280 !important; }
+    
     .summary-cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -186,9 +192,9 @@
     }
     
     .budget-col { color: #6b7280; }
-    .remaining-positive { color: #276749; font-weight: 500; }
-    .remaining-negative { color: #c53030; font-weight: 600; }
-    .remaining-zero { color: #6b7280; }
+    .remaining-positive { color: #276749 !important; font-weight: 500; }
+    .remaining-negative { color: #c53030 !important; font-weight: 600; }
+    .remaining-zero { color: #6b7280 !important; }
     
     .detail-btn {
       display: inline-flex;
@@ -264,8 +270,13 @@
       .tab-bar { padding: 0 16px; }
       .tab { padding: 12px 16px; font-size: 14px; }
       .content { padding: 0 8px; }
-      td, th { padding: 8px 12px; }
+      td, th { padding: 6px 8px; font-size: 12px; }
+      td.amount, th.amount { font-size: 11px; }
       .summary-card .value { font-size: 18px; }
+      .report-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .report-card table { min-width: 600px; }
+      .detail-btn { font-size: 10px; padding: 1px 5px; }
+      tr.section-header td, tr.sub-section td { font-size: 12px; }
     }
   </style>
 </head>
